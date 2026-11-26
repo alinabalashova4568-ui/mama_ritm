@@ -9,7 +9,7 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_applicati
 
 # --- НАСТРОЙКИ ---
 BOT_TOKEN = os.getenv("BOT_TOKEN", "ВАШ_ТОКЕН")
-ADMIN_ID = 8553406744  # Ваш ID
+ADMIN_ID = 8553406744
 WEBHOOK_HOST = os.getenv("RENDER_EXTERNAL_URL", "https://mama-ritm.onrender.com")
 WEBHOOK_PATH = "/webhook"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
@@ -28,12 +28,8 @@ async def handle_data(request):
     user_name = data.get('name', 'Неизвестно')
     user_date = data.get('date', 'Неизвестно')
     
-    text = f"👶 *Новый пользователь в Мамином Ритме!*\n\nИмя малыша: {user_name}\nДата рождения: {user_date}"
-    
-    try:
-        await bot.send_message(ADMIN_ID, text, parse_mode="Markdown")
-    except Exception as e:
-        logging.error(f"Ошибка отправки: {e}")
+    # Просто логируем в консоль Render, что данные пришли
+    logging.info(f"Новый пользователь: {user_name}, Дата: {user_date}")
     
     return web.json_response({"status": "ok"})
 
@@ -51,7 +47,7 @@ async def start(message: types.Message):
         reply_markup=builder.as_markup()
     )
 
-# --- ЗАПУСК ВЕБХУКА ---
+# --- ЗАПУСК ---
 async def on_startup(bot: Bot):
     await bot.set_webhook(WEBHOOK_URL)
 
