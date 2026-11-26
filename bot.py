@@ -1,7 +1,7 @@
 import os
 import logging
 from aiohttp import web
-from aiogram import Bot, Dispatcher, types, F
+from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardButton, WebAppInfo
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -9,8 +9,8 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_applicati
 
 # --- НАСТРОЙКИ ---
 BOT_TOKEN = os.getenv("BOT_TOKEN", "ВАШ_ТОКЕН")
-ADMIN_ID = 8553406744
-WEBHOOK_HOST = os.getenv("RENDER_EXTERNAL_URL", "https://ваш-сервер.onrender.com")
+ADMIN_ID = 8553406744  # Ваш ID
+WEBHOOK_HOST = os.getenv("RENDER_EXTERNAL_URL", "https://mama-ritm.onrender.com")
 WEBHOOK_PATH = "/webhook"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
@@ -24,17 +24,16 @@ async def handle_index(request):
 
 # --- ПРИНИМАЕМ ДАННЫЕ ОТ МАМЫ ---
 async def handle_data(request):
-    # Здесь мы ловим данные, которые отправит наш HTML
     data = await request.json()
-    
-    # Telegram присылает данные в зашифрованном виде в заголовке, 
-    # но для простоты мы возьмем их из тела запроса (в реальном проекте нужно проверять подпись)
     user_name = data.get('name', 'Неизвестно')
     user_date = data.get('date', 'Неизвестно')
     
-    # Отправляем уведомление тебе (админу)
     text = f"👶 *Новый пользователь в Мамином Ритме!*\n\nИмя малыша: {user_name}\nДата рождения: {user_date}"
-    await bot.send_message(ADMIN_ID, text, parse_mode="Markdown")
+    
+    try:
+        await bot.send_message(ADMIN_ID, text, parse_mode="Markdown")
+    except Exception as e:
+        logging.error(f"Ошибка отправки: {e}")
     
     return web.json_response({"status": "ok"})
 
@@ -42,7 +41,6 @@ async def handle_data(request):
 @dp.message(Command("start"))
 async def start(message: types.Message):
     builder = InlineKeyboardBuilder()
-    # Кнопка открывает наш index.html
     builder.row(InlineKeyboardButton(
         text="👶 Открыть Мамин Ритм", 
         web_app=WebAppInfo(url=f"{WEBHOOK_HOST}/index.html")
@@ -56,31 +54,11 @@ async def start(message: types.Message):
 # --- ЗАПУСК ВЕБХУКА ---
 async def on_startup(bot: Bot):
     await bot.set_webhook(WEBHOOK_URL)
-# --- ОБРАБОТЧИК ДАННЫХ ИЗ MINI APP ---
-@dp.message(F.web_app_data)
-async def handle_web_app_data(message: types.Message):
-    try:
-        # Парсим данные, которые прислал HTML
-        import json
-        data = json.loads(message.web_app_data.data)
-        user_name = data.get('name', 'Неизвестно')
-        user_date = data.get('date', 'Неизвестно')
-        
-        # Отправляем уведомление вам
-        await message.answer(
-            f"👶 *Новый пользователь в Мамином Ритме!*\n\n"
-            f"Имя малыша: {user_name}\n"
-            f"Дата рождения: {user_date}",
-            parse_mode="Markdown"
-        )
-    except Exception as e:
-        await message.answer(f"Ошибка обработки данных: {e}")
-    
 
 def main():
     app = web.Application()
     app.router.add_get("/index.html", handle_index)
-    app.router.add_post("/api/save", handle_data) # Сюда HTML шлет данные
+    app.router.add_post("/api/save", handle_data)
     
     SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=WEBHOOK_PATH)
     setup_application(app, dp, bot=bot)
