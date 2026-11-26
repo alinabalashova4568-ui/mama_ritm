@@ -1,0 +1,72 @@
+import os
+import logging
+from aiohttp import web
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import Command
+from aiogram.types import InlineKeyboardButton, WebAppInfo
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+
+# --- НАСТРОЙКИ ---
+BOT_TOKEN = os.getenv("BOT_TOKEN", "ВАШ_ТОКЕН")
+ADMIN_ID = 8553406744
+WEBHOOK_HOST = os.getenv("RENDER_EXTERNAL_URL", "https://ваш-сервер.onrender.com")
+WEBHOOK_PATH = "/webhook"
+WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
+
+logging.basicConfig(level=logging.INFO)
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher()
+
+# --- ОТДАЕМ HTML ФАЙЛ ---
+async def handle_index(request):
+    return web.FileResponse('./index.html')
+
+# --- ПРИНИМАЕМ ДАННЫЕ ОТ МАМЫ ---
+async def handle_data(request):
+    # Здесь мы ловим данные, которые отправит наш HTML
+    data = await request.json()
+    
+    # Telegram присылает данные в зашифрованном виде в заголовке, 
+    # но для простоты мы возьмем их из тела запроса (в реальном проекте нужно проверять подпись)
+    user_name = data.get('name', 'Неизвестно')
+    user_date = data.get('date', 'Неизвестно')
+    
+    # Отправляем уведомление тебе (админу)
+    text = f"👶 *Новый пользователь в Мамином Ритме!*\n\nИмя малыша: {user_name}\nДата рождения: {user_date}"
+    await bot.send_message(ADMIN_ID, text, parse_mode="Markdown")
+    
+    return web.json_response({"status": "ok"})
+
+# --- КОМАНДА START ---
+@dp.message(Command("start"))
+async def start(message: types.Message):
+    builder = InlineKeyboardBuilder()
+    # Кнопка открывает наш index.html
+    builder.row(InlineKeyboardButton(
+        text="👶 Открыть Мамин Ритм", 
+        web_app=WebAppInfo(url=f"{WEBHOOK_HOST}/index.html")
+    ))
+    await message.answer(
+        "Привет! 👋 Добро пожаловать в «Мамин Ритм».\n"
+        "Нажмите кнопку ниже, чтобы начать знакомство.",
+        reply_markup=builder.as_markup()
+    )
+
+# --- ЗАПУСК ВЕБХУКА ---
+async def on_startup(bot: Bot):
+    await bot.set_webhook(WEBHOOK_URL)
+
+def main():
+    app = web.Application()
+    app.router.add_get("/index.html", handle_index)
+    app.router.add_post("/api/save", handle_data) # Сюда HTML шлет данные
+    
+    SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=WEBHOOK_PATH)
+    setup_application(app, dp, bot=bot)
+    
+    port = int(os.environ.get("PORT", 8080))
+    web.run_app(app, host='0.0.0.0', port=port)
+
+if __name__ == "__main__":
+    main()
