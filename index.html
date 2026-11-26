@@ -18,6 +18,7 @@
             min-height: 100vh;
             margin: 0;
             box-sizing: border-box;
+            transition: background 0.3s;
         }
         .card {
             background: white;
@@ -51,13 +52,26 @@
             font-weight: bold;
             cursor: pointer; 
             transition: opacity 0.2s;
+            margin-bottom: 10px;
         }
         button:active { opacity: 0.8; }
+        
+        /* Стили для Дашборда */
+        .dashboard-btn {
+            background-color: #e6f0ea;
+            color: #556b2f;
+            border: 2px solid #a3c9b5;
+            text-align: left;
+            padding: 20px;
+            font-size: 18px;
+        }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
 
-    <div class="card">
+    <!-- ЭКРАН 1: АНКЕТА -->
+    <div class="card" id="formScreen">
         <h1>Мамин Ритм</h1>
         <p>Давайте познакомимся! Введите данные, чтобы я могла подстроиться под ваш ритм.</p>
 
@@ -68,6 +82,17 @@
         <input type="date" id="birthDate">
 
         <button onclick="saveData()">Начать</button>
+    </div>
+
+    <!-- ЭКРАН 2: ДАШБОРД (Скрыт по умолчанию) -->
+    <div class="card hidden" id="dashboardScreen">
+        <h1>Привет, мама! 👋</h1>
+        <p id="babyInfo">Данные загружаются...</p>
+
+        <button class="dashboard-btn" onclick="soon()">😴 Сон и бодрствование</button>
+        <button class="dashboard-btn" onclick="soon()">🥄 Прикорм и кормление</button>
+        <button class="dashboard-btn" onclick="soon()">📔 Дневник достижений</button>
+        <button class="dashboard-btn" onclick="soon()">🥗 Забота о маме</button>
     </div>
 
     <script>
@@ -85,21 +110,29 @@
 
             const data = { name: name, date: date };
             
-            // Отправляем данные на наш сервер
+            // Отправляем данные на сервер
             fetch('/api/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             }).then(response => {
                 if (response.ok) {
-                    tg.showAlert("Данные сохранены! Добро пожаловать в Мамин Ритм.");
-                    tg.close();
+                    // Прячем анкету, показываем Дашборд
+                    document.getElementById('formScreen').classList.add('hidden');
+                    document.getElementById('dashboardScreen').classList.remove('hidden');
+                    
+                    // Меняем текст на дашборде
+                    document.getElementById('babyInfo').innerText = `Профиль малыша ${name} сохранен.`;
                 } else {
                     tg.showAlert("Ошибка при сохранении.");
                 }
             }).catch(err => {
                 tg.showAlert("Ошибка сети: " + err);
             });
+        }
+
+        function soon() {
+            tg.showAlert("Эта функция появится в следующем обновлении! 🚀");
         }
     </script>
 </body>
