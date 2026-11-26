@@ -1,6 +1,7 @@
 import os
 import logging
 import aiosqlite
+import asyncio
 from aiohttp import web
 from datetime import datetime
 from aiogram import Bot, Dispatcher, types
@@ -32,6 +33,7 @@ async def init_db():
             )
         """)
         await db.commit()
+    logging.info("База данных инициализирована.")
 
 # --- ОТДАЕМ HTML ---
 async def handle_index(request):
@@ -80,13 +82,15 @@ async def start(message: types.Message):
 
 # --- ЗАПУСК ---
 async def on_startup(bot: Bot):
+    await init_db() # Создаем базу при старте
     await bot.set_webhook(WEBHOOK_URL)
 
 def main():
+    # Принудительно создаем базу данных ДО запуска сервера
+    asyncio.run(init_db())
+    
     app = web.Application()
     app.router.add_get("/index.html", handle_index)
-    
-    # Подключаем наши API
     app.router.add_post("/api/save", handle_save_profile)
     app.router.add_post("/api/add_achievement", handle_add_achievement)
     app.router.add_get("/api/get_achievements", handle_get_achievements)
