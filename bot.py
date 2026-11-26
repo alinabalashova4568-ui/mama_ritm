@@ -56,6 +56,26 @@ async def start(message: types.Message):
 # --- ЗАПУСК ВЕБХУКА ---
 async def on_startup(bot: Bot):
     await bot.set_webhook(WEBHOOK_URL)
+# --- ОБРАБОТЧИК ДАННЫХ ИЗ MINI APP ---
+@dp.message(F.web_app_data)
+async def handle_web_app_data(message: types.Message):
+    try:
+        # Парсим данные, которые прислал HTML
+        import json
+        data = json.loads(message.web_app_data.data)
+        user_name = data.get('name', 'Неизвестно')
+        user_date = data.get('date', 'Неизвестно')
+        
+        # Отправляем уведомление вам
+        await message.answer(
+            f"👶 *Новый пользователь в Мамином Ритме!*\n\n"
+            f"Имя малыша: {user_name}\n"
+            f"Дата рождения: {user_date}",
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        await message.answer(f"Ошибка обработки данных: {e}")
+    
 
 def main():
     app = web.Application()
